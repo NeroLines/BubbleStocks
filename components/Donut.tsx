@@ -1,5 +1,5 @@
-// Pure-SVG donut ring. Used for the 30/70 liquidity composition and the small
-// split ring inside each pool bubble. Server component, no JS needed.
+// Pure-SVG donut ring for data-driven liquidity composition. Server component,
+// no JS needed.
 type Seg = { pct: number; color: string };
 
 export function Donut({

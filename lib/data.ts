@@ -18,5 +18,5 @@ export const launchMemestock = src.launchMemestock;
 export const swap = src.swap;
 
 // Constants + types live in stub (they are shape, not data source).
-export { SPLIT, SUPPORTED_STOCKS } from "./stub";
-export type { Memestock, Pairing, Provider, StockPool, LaunchInput, LaunchResult, SwapInput } from "./stub";
+export { ALLOCATION_RULES, SUPPORTED_STOCKS, isLaunchAllocationValid } from "./stub";
+export type { Memestock, Pairing, Provider, StockPool, LaunchAllocation, LaunchInput, LaunchResult, SwapInput } from "./stub";

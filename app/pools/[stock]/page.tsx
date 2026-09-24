@@ -5,8 +5,9 @@ import { Donut } from "@/components/Donut";
 import { CoinImage } from "@/components/CoinImage";
 import { CopyButton } from "@/components/CopyButton";
 import { ProviderBadge } from "@/components/ProviderBadge";
-import { getPool, getPools, SPLIT } from "@/lib/data";
+import { getPool, getPools } from "@/lib/data";
 import { compact, pct } from "@/lib/format";
+import { poolLiquidityBreakdown } from "@/lib/liquidity";
 import { ArrowLeft, CaretUp, CaretDown } from "@phosphor-icons/react/dist/ssr";
 
 export default async function PoolPage({ params }: { params: Promise<{ stock: string }> }) {
@@ -19,8 +20,7 @@ export default async function PoolPage({ params }: { params: Promise<{ stock: st
     pairing: m.pairings.find((pairing) => pairing.poolAddress === pool.poolAddress),
   }));
   const rewards24h = pool.contributors.reduce((sum, m) => sum + m.rewardPayout24hUsd, 0);
-  const memeStockUsd = Math.round(pool.tvlUsd * (SPLIT.meme / 100));
-  const stockUsdcUsd = Math.round(pool.tvlUsd * (SPLIT.stock / 100));
+  const liquidity = poolLiquidityBreakdown(pool);
 
   return (
     <main className="min-h-[100dvh] bg-bg">
@@ -34,10 +34,10 @@ export default async function PoolPage({ params }: { params: Promise<{ stock: st
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-5">
               <Donut size={104} thickness={15} segments={[
-                { pct: SPLIT.meme, color: "var(--accent-2)" },
-                { pct: SPLIT.stock, color: "var(--accent)" },
+                { pct: liquidity.memePct, color: "var(--accent-2)" },
+                { pct: liquidity.compoundingPct, color: "var(--accent)" },
               ]}>
-                <div className="tnum font-display text-sm font-bold text-ink">{compact(pool.tvlUsd)}</div>
+                <div className="tnum font-display text-sm font-bold text-ink">{compact(liquidity.routedLiquidityUsd)}</div>
               </Donut>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -49,12 +49,12 @@ export default async function PoolPage({ params }: { params: Promise<{ stock: st
                   <span className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-accent-2" />
                     <span className="text-ink-soft">Meme/Stock pool</span>
-                    <span className="tnum ml-auto font-semibold text-ink">{compact(memeStockUsd)}</span>
+                    <span className="tnum ml-auto font-semibold text-ink">{compact(liquidity.memeLiquidityUsd)}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-brand" />
                     <span className="text-ink-soft">Stock/USDC pool</span>
-                    <span className="tnum ml-auto font-semibold text-ink">{compact(stockUsdcUsd)}</span>
+                    <span className="tnum ml-auto font-semibold text-ink">{compact(liquidity.compoundingLiquidityUsd)}</span>
                   </span>
                 </div>
               </div>

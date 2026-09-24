@@ -57,9 +57,10 @@ export async function getStats() {
 import type { LaunchInput, LaunchResult, SwapInput } from "./stub";
 export async function launchMemestock(input: LaunchInput): Promise<LaunchResult> {
   // TODO(connector): build + send the DBC launch tx (single-segment fair curve, 1bln
-  // supply, $69k threshold, 2.5%+0.5% fee) via the connected wallet. Upload
-  // imageDataUrl first, write its permanent URL into token metadata, then return
-  // the mint id, tx signature, imageUrl and metadataUri.
+  // supply, $138k threshold, 2.16% fee: 1% protocol, 0.8% creator, 0.36% Meteora)
+  // via the connected wallet. Enforce the shared allocation rules before building
+  // the transaction. Upload imageDataUrl first, write its permanent URL into token
+  // metadata, then return the mint id, tx signature, imageUrl and metadataUri.
   void input;
   return TODO("launchMemestock");
 }

@@ -4,18 +4,18 @@ import Link from "next/link";
 import { Donut } from "./Donut";
 import { CoinImage } from "./CoinImage";
 import { compact } from "@/lib/format";
-import { SPLIT, type StockPool } from "@/lib/data";
+import { type StockPool } from "@/lib/data";
+import { poolLiquidityBreakdown } from "@/lib/liquidity";
 import { CaretLeft, CaretRight, ArrowRight } from "@phosphor-icons/react";
 
 // The partner's hero element, done professionally: one featured STOCK/USDC pool
-// with its 70/30 split and top memes, swipeable across pools. Tapping opens the
+// with its routed liquidity and top memes, swipeable across pools. Tapping opens the
 // full pool page — so it doubles as an obvious entry point into the market.
 export function FeaturedPool({ pools }: { pools: StockPool[] }) {
   const [i, setI] = useState(0);
   const p = pools[i];
   const go = (d: number) => setI((v) => (v + d + pools.length) % pools.length);
-  const memeStock = Math.round(p.tvlUsd * (SPLIT.meme / 100));
-  const stockUsdc = Math.round(p.tvlUsd * (SPLIT.stock / 100));
+  const liquidity = poolLiquidityBreakdown(p);
 
   return (
     <div className="card rounded-2xl p-5">
@@ -40,19 +40,19 @@ export function FeaturedPool({ pools }: { pools: StockPool[] }) {
 
         <div className="mt-4 flex items-center gap-4">
           <Donut size={92} thickness={13}
-            segments={[{ pct: SPLIT.meme, color: "var(--accent-2)" }, { pct: SPLIT.stock, color: "var(--accent)" }]}>
-            <div className="tnum font-display text-sm font-bold text-ink">{compact(p.tvlUsd)}</div>
+            segments={[{ pct: liquidity.memePct, color: "var(--accent-2)" }, { pct: liquidity.compoundingPct, color: "var(--accent)" }]}>
+            <div className="tnum font-display text-sm font-bold text-ink">{compact(liquidity.routedLiquidityUsd)}</div>
           </Donut>
           <div className="grid flex-1 gap-1.5 text-sm">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ background: "var(--accent-2)" }} />
               <span className="text-ink-soft">Meme/Stock</span>
-              <span className="tnum ml-auto font-semibold text-ink">{compact(memeStock)}</span>
+              <span className="tnum ml-auto font-semibold text-ink">{compact(liquidity.memeLiquidityUsd)}</span>
             </span>
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
               <span className="text-ink-soft">Stock/USDC</span>
-              <span className="tnum ml-auto font-semibold text-ink">{compact(stockUsdc)}</span>
+              <span className="tnum ml-auto font-semibold text-ink">{compact(liquidity.compoundingLiquidityUsd)}</span>
             </span>
           </div>
         </div>

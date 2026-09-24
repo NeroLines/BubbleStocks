@@ -7,10 +7,10 @@ import { Ticker } from "@/components/Ticker";
 import { PoolsTable } from "@/components/PoolsTable";
 import { MemestockCard } from "@/components/MemestockCard";
 import { MobileLiquidityBoard } from "@/components/MobileLiquidityBoard";
-import { getPools, getStats, topMemes, SPLIT } from "@/lib/data";
+import { getPools, getStats, topMemes } from "@/lib/data";
 import { compact } from "@/lib/format";
 import {
-  RocketLaunch, GraduationCap, ChartLineUp, Gift, ArrowRight, MagnifyingGlass, ShieldCheck,
+  RocketLaunch, GraduationCap, ChartLineUp, ArrowRight, MagnifyingGlass, ShieldCheck,
 } from "@phosphor-icons/react/dist/ssr";
 
 export default async function Home() {
@@ -92,7 +92,7 @@ export default async function Home() {
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <h2 className="font-display text-2xl font-bold tracking-tight text-ink">Pools</h2>
-            <p className="mt-1 text-sm text-ink-soft">Every STOCK/USDC pool, ranked by liquidity. Open one to inspect its BubbleStocks. Example data, not financial advice.</p>
+            <p className="mt-1 text-sm text-ink-soft">Every STOCK/USDC pool, ranked by liquidity. Open one to inspect its BubbleStocks.</p>
           </div>
           <Link href="/explore" className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-brand sm:inline-flex">
             Explore BubbleStocks <ArrowRight size={15} weight="bold" />
@@ -104,13 +104,12 @@ export default async function Home() {
       {/* ── How it works ────────────────────────────────────────────────── */}
       <section id="how" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-10 sm:px-6">
         <h2 className="font-display text-2xl font-bold tracking-tight text-ink">How the liquidity flows</h2>
-        <p className="mt-1 text-sm text-ink-soft">From meme launch to holder rewards, in four steps.</p>
-        <div className="home-flow-grid mt-6 grid gap-4 md:grid-cols-4">
+        <p className="mt-1 text-sm text-ink-soft">Launch, migrate multipool, and compound fees into deeper liquidity.</p>
+        <div className="home-flow-grid mt-6 grid gap-4 md:grid-cols-3">
           {[
-            { icon: <RocketLaunch size={20} weight="fill" />, t: "Launch", d: "A BubbleStock launches on the Meteora bonding curve." },
-            { icon: <GraduationCap size={20} weight="fill" />, t: "Graduate", d: `On migration, ${SPLIT.stock}% of liquidity seeds the shared STOCK/USDC pool.` },
-            { icon: <ChartLineUp size={20} weight="fill" />, t: "Generate fees", d: "Meme/Stock trading fees compound into the STOCK/USDC pool." },
-            { icon: <Gift size={20} weight="fill" />, t: "Reward holders", d: "Pool fees are airdropped to eligible meme holders." },
+            { icon: <RocketLaunch size={20} weight="fill" />, t: "Launch", d: "Launch BubbleStocks via a Dynamic Bonding Curve (DBC)." },
+            { icon: <GraduationCap size={20} weight="fill" />, t: "Multipool", d: "BubbleStocks can migrate liquidity into several stock pools, bootstrapping initial STOCK/USDC liquidity that earns fees." },
+            { icon: <ChartLineUp size={20} weight="fill" />, t: "Compounding fees", d: "BubbleStock fees are seeded into STOCK/USDC pools, growing liquidity long-term and increasing reflections over time." },
           ].map((s, i) => (
             <div key={s.t} className="home-flow-step card rounded-2xl p-5">
               <div className="flex items-center gap-2.5">

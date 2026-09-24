@@ -4,9 +4,41 @@
 //
 // ponytail: mock now, RPC later. Keep function names/return shapes stable.
 
-// Protocol-wide constant: on graduation, 30% of a launch's liquidity seeds the
-// shared STOCK/USDC pool, 70% stays in the meme/stock pool it routes through.
-export const SPLIT = { meme: 70, stock: 30 } as const;
+// One source of truth for creator-controlled migration allocations.
+export const ALLOCATION_RULES = {
+  totalPct: 100,
+  mainMinPct: 50,
+  maxExtraPools: 3,
+  extraPoolMinPct: 10,
+  extraPoolMaxPct: 50,
+  stepPct: 5,
+} as const;
+
+export type LaunchAllocation = {
+  memeStockPct: number;
+  pools: { stock: string; pct: number }[];
+};
+
+export function isLaunchAllocationValid(allocation: LaunchAllocation, mainStock?: string): boolean {
+  const { memeStockPct, pools } = allocation;
+  if (!Number.isFinite(memeStockPct)
+    || memeStockPct < ALLOCATION_RULES.mainMinPct
+    || memeStockPct > ALLOCATION_RULES.totalPct
+    || pools.length > ALLOCATION_RULES.maxExtraPools) return false;
+
+  const destinations = new Set(mainStock ? [mainStock] : []);
+  let total = memeStockPct;
+  for (const pool of pools) {
+    if (!pool.stock
+      || destinations.has(pool.stock)
+      || !Number.isFinite(pool.pct)
+      || pool.pct < ALLOCATION_RULES.extraPoolMinPct
+      || pool.pct > ALLOCATION_RULES.extraPoolMaxPct) return false;
+    destinations.add(pool.stock);
+    total += pool.pct;
+  }
+  return total === ALLOCATION_RULES.totalPct;
+}
 
 export type Provider = "teslax" | "prestock" | "Tessera";
 
@@ -43,7 +75,7 @@ export type Memestock = {
   holders: number;
   vol24hUsd: number;
   fees24hUsd: number;
-  rewardPayout24hUsd: number; // airdropped to this meme's holders in 24h
+  rewardPayout24hUsd: number; // estimated holder reflections generated in 24h
   bondingPct: number;   // 0..100 progress along the bonding curve
   migrated: boolean;    // has it graduated to DAMM v2 yet
   spark: number[];      // recent price points for the sparkline
@@ -203,7 +235,7 @@ function build() {
         apy, holders,
         vol24hUsd,
         fees24hUsd: Math.round(vol24hUsd * 0.003),
-        // Reward payout airdropped to this meme's holders in the last 24h.
+        // Estimated reflections generated for this meme's holders in the last 24h.
         rewardPayout24hUsd: Math.round(vol24hUsd * 0.003 * 0.6),
         bondingPct: 100,
         migrated: true,
@@ -279,7 +311,7 @@ export async function getStats() {
     stockUsdcTvlUsd: pools.reduce((s, p) => s + p.tvlUsd, 0),
     launches: 128,
     live: memes.length,
-    split: SPLIT,
+    allocationRules: ALLOCATION_RULES,
   };
 }
 
@@ -290,7 +322,7 @@ export type LaunchInput = {
   name: string;
   ticker: string;
   stock: string;
-  quoteToken: string;      // USDC | SOL
+  quoteToken: "USDC";     // fixed launch quote; no creator-selectable alternatives
   // Portable source for the connector to upload to permanent metadata storage.
   // Never pass a blob: URL here: it stops working when the browser tab closes.
   imageDataUrl?: string;
@@ -301,7 +333,7 @@ export type LaunchInput = {
   telegram?: string;
   // Migration allocation (partner spec): meme/stock keeps >= 50%; the rest splits
   // across up to 3 STOCK/USDC fee-recipient pools. Percentages sum to 100.
-  allocation: { memeStockPct: number; pools: { stock: string; pct: number }[] };
+  allocation: LaunchAllocation;
 };
 export type LaunchResult = {
   id: string;
@@ -310,6 +342,9 @@ export type LaunchResult = {
   metadataUri?: string;
 };
 export async function launchMemestock(input: LaunchInput): Promise<LaunchResult> {
+  if (!isLaunchAllocationValid(input.allocation, input.stock)) {
+    throw new Error("Invalid allocation: keep at least 50% in the main pair and distribute at most 50% across up to three unique pools.");
+  }
   await new Promise((r) => setTimeout(r, 1200)); // feel of a real tx
   return {
     id: input.ticker.toLowerCase(),

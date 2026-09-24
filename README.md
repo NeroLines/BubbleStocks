@@ -1,6 +1,6 @@
 # BubbleStocks
 
-Solana memestock launchpad. Launch memestocks that seed real STOCK/USDC liquidity;
+Solana BubbleStock launchpad. Launch BubbleStocks that seed real STOCK/USDC liquidity;
 trading fees compound into the pools and flow back to holders.
 
 Built for the StockLana hackathon (Meteora DBC + DAMM v2).

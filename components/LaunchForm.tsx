@@ -1,20 +1,19 @@
 "use client";
 import { useState } from "react";
-import { SUPPORTED_STOCKS, launchMemestock } from "@/lib/data";
+import { ALLOCATION_RULES, SUPPORTED_STOCKS, isLaunchAllocationValid, launchMemestock } from "@/lib/data";
 import { Logo } from "./Logo";
 import { RocketLaunch, ImageSquare, CheckCircle, CircleNotch, GlobeSimple, XLogo, TelegramLogo, Plus, LockSimple, Gift, UserCircle } from "@phosphor-icons/react";
 
 // Launch configuration form. Fields follow the partner spec: name, ticker,
-// picture, quote token, dev buy, socials + the underlying stock. Submit runs
+// picture, dev buy, socials + the underlying stock. Submit runs
 // through the connector seam (launchMemestock); the on-chain DBC create-pool tx
 // swaps in there without touching this form.
-const QUOTE_TOKENS = ["USDC", "SOL"];
+const LAUNCH_QUOTE_TOKEN = "USDC" as const;
 
 export function LaunchForm() {
   const [name, setName] = useState("");
   const [ticker, setTicker] = useState("");
   const [stock, setStock] = useState(SUPPORTED_STOCKS[0]);
-  const [quoteToken, setQuoteToken] = useState(QUOTE_TOKENS[0]);
   const [devBuy, setDevBuy] = useState("");
   const [website, setWebsite] = useState("");
   const [twitter, setTwitter] = useState("");
@@ -53,31 +52,56 @@ export function LaunchForm() {
   };
 
   const extraTotal = extraPools.reduce((s, p) => s + p.pct, 0);
-  const memeStockPct = 100 - extraTotal;
-  const allocValid = memeStockPct >= 50 && extraPools.every((p) => p.pct >= 10 && p.pct <= 50 && p.stock);
+  const memeStockPct = ALLOCATION_RULES.totalPct - extraTotal;
+  const allocation = { memeStockPct, pools: extraPools };
+  const allocValid = isLaunchAllocationValid(allocation, stock);
   const valid = name.trim() && ticker.trim().length >= 2 && allocValid;
 
   const addPool = () => {
-    if (extraPools.length >= 3 || memeStockPct <= 50) return;
+    const remainingExtraCapacity = ALLOCATION_RULES.totalPct - ALLOCATION_RULES.mainMinPct - extraTotal;
+    if (extraPools.length >= ALLOCATION_RULES.maxExtraPools || remainingExtraCapacity < ALLOCATION_RULES.extraPoolMinPct) return;
     const used = new Set([stock, ...extraPools.map((p) => p.stock)]);
     const next = SUPPORTED_STOCKS.find((s) => !used.has(s)) ?? SUPPORTED_STOCKS[0];
-    setExtraPools([...extraPools, { stock: next, pct: Math.min(25, memeStockPct - 50 || 10) }]);
+    setExtraPools([...extraPools, { stock: next, pct: Math.min(25, remainingExtraCapacity) }]);
   };
-  const setPool = (i: number, patch: Partial<{ stock: string; pct: number }>) =>
-    setExtraPools(extraPools.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  const setPool = (i: number, patch: Partial<{ stock: string; pct: number }>) => {
+    setExtraPools((pools) => {
+      const otherPoolsTotal = pools.reduce((sum, pool, index) => index === i ? sum : sum + pool.pct, 0);
+      const maxPoolPct = Math.min(ALLOCATION_RULES.extraPoolMaxPct, ALLOCATION_RULES.totalPct - ALLOCATION_RULES.mainMinPct - otherPoolsTotal);
+      return pools.map((pool, index) => index === i
+        ? { ...pool, ...patch, pct: patch.pct === undefined ? pool.pct : Math.max(ALLOCATION_RULES.extraPoolMinPct, Math.min(patch.pct, maxPoolPct)) }
+        : pool);
+    });
+  };
   const removePool = (i: number) => setExtraPools(extraPools.filter((_, j) => j !== i));
+  const setMainStock = (nextStock: string) => {
+    setStock(nextStock);
+    setExtraPools((pools) => {
+      const used = new Set([nextStock]);
+      return pools.map((pool) => {
+        const poolStock = used.has(pool.stock)
+          ? SUPPORTED_STOCKS.find((candidate) => !used.has(candidate)) ?? pool.stock
+          : pool.stock;
+        used.add(poolStock);
+        return { ...pool, stock: poolStock };
+      });
+    });
+  };
   const setMainAllocation = (nextMainPct: number) => {
-    const targetExtra = 100 - nextMainPct;
+    const safeMainPct = Math.max(ALLOCATION_RULES.mainMinPct, Math.min(nextMainPct, ALLOCATION_RULES.totalPct));
+    const targetExtra = ALLOCATION_RULES.totalPct - safeMainPct;
     if (targetExtra === 0) { setExtraPools([]); return; }
     let count = Math.max(1, extraPools.length);
-    while (count > 1 && targetExtra < count * 10) count--;
-    count = Math.min(3, count);
+    while (count > 1 && targetExtra < count * ALLOCATION_RULES.extraPoolMinPct) count--;
+    count = Math.min(ALLOCATION_RULES.maxExtraPools, count);
     const used = new Set([stock]);
     const nextPools = Array.from({ length: count }, (_, i) => {
       const current = extraPools[i];
       const nextStock = current?.stock ?? SUPPORTED_STOCKS.find((candidate) => !used.has(candidate)) ?? SUPPORTED_STOCKS[0];
       used.add(nextStock);
-      const pct = i === count - 1 ? targetExtra - Math.floor(targetExtra / count) * i : Math.floor(targetExtra / count);
+      const remainingSteps = targetExtra / ALLOCATION_RULES.stepPct;
+      const baseSteps = Math.floor(remainingSteps / count);
+      const pct = (baseSteps + (i >= count - (remainingSteps % count) ? 1 : 0)) * ALLOCATION_RULES.stepPct;
       return { stock: nextStock, pct };
     });
     setExtraPools(nextPools);
@@ -90,14 +114,14 @@ export function LaunchForm() {
     setError(null);
     try {
       const res = await launchMemestock({
-        name: name.trim(), ticker, stock, quoteToken,
+        name: name.trim(), ticker, stock, quoteToken: LAUNCH_QUOTE_TOKEN,
         imageDataUrl: img ?? undefined,
         description: desc.trim() || undefined,
         devBuySol: parseFloat(devBuy) || undefined,
         website: website.trim() || undefined,
         twitter: twitter.trim() || undefined,
         telegram: telegram.trim() || undefined,
-        allocation: { memeStockPct, pools: extraPools },
+        allocation,
       });
       setSig(res.signature);
       setLaunched(true);
@@ -163,18 +187,11 @@ export function LaunchForm() {
             />
           </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Underlying stock" hint="The real ticker it's paired with">
-              <select value={stock} onChange={(e) => setStock(e.target.value)} className="bs-input">
-                {SUPPORTED_STOCKS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            <Field label="Quote token" hint="The pool's quote currency">
-              <select value={quoteToken} onChange={(e) => setQuoteToken(e.target.value)} className="bs-input">
-                {QUOTE_TOKENS.map((q) => <option key={q} value={q}>{q}</option>)}
-              </select>
-            </Field>
-          </div>
+          <Field label="Underlying stock" hint="The real ticker it's paired with">
+            <select value={stock} onChange={(e) => setMainStock(e.target.value)} className="bs-input">
+              {SUPPORTED_STOCKS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
 
           <Field label="Image" hint="PNG or JPG, square works best">
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[color:var(--border-strong)] bg-panel-2 px-4 py-3 text-sm text-ink-soft hover:border-brand">
@@ -272,15 +289,15 @@ export function LaunchForm() {
         <div className="allocation-main-node mx-auto mt-7 max-w-xl rounded-3xl border border-white/80 bg-panel/82 p-5 shadow-[0_18px_45px_rgba(41,104,165,0.15)] backdrop-blur-xl sm:p-6">
           <div className="mx-auto -mt-10 grid h-11 w-11 place-items-center rounded-full border border-white bg-panel text-brand shadow-lg"><Plus size={23} weight="bold" /></div>
           <h3 className="mt-3 text-center font-display text-xl font-bold text-ink">Add Meme / Stock pool</h3>
-          <p className="mt-1 text-center text-sm text-ink-soft">Main trading pair · min 50% liquidity</p>
+          <p className="mt-1 text-center text-sm text-ink-soft">Min. 50% liquidity in the main pair</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-            <select value={stock} onChange={(e) => setStock(e.target.value)} className="bs-input bg-white/65">
+            <select value={stock} onChange={(e) => setMainStock(e.target.value)} className="bs-input bg-white/65">
               {SUPPORTED_STOCKS.map((s) => <option key={s} value={s}>{s} as stock quote</option>)}
             </select>
             <span className="tnum rounded-xl bg-brand/10 px-3 py-2 text-center text-sm font-bold text-brand">{memeStockPct}%</span>
           </div>
-          <input type="range" min={50} max={100} step={5} value={memeStockPct} onChange={(e) => setMainAllocation(+e.target.value)} className="mt-4 w-full accent-[color:var(--accent)]" aria-label="Meme Stock allocation" />
-          <div className="mt-2 flex items-center justify-between text-xs text-ink-soft"><span className="inline-flex items-center gap-1"><LockSimple size={13} weight="bold" /> Min 50%</span><span>100% total allocation</span></div>
+          <input type="range" min={ALLOCATION_RULES.mainMinPct} max={ALLOCATION_RULES.totalPct} step={ALLOCATION_RULES.stepPct} value={memeStockPct} onChange={(e) => setMainAllocation(+e.target.value)} className="mt-4 w-full accent-[color:var(--accent)]" aria-label="Meme Stock allocation" />
+          <div className="mt-2 flex items-center justify-between text-xs text-ink-soft"><span className="inline-flex items-center gap-1"><LockSimple size={13} weight="bold" /> Min {ALLOCATION_RULES.mainMinPct}%</span><span>{ALLOCATION_RULES.totalPct}% total allocation</span></div>
         </div>
 
         <div className="flow-stem" aria-hidden />
@@ -288,10 +305,10 @@ export function LaunchForm() {
         <div className="allocation-branch" aria-hidden />
 
         <div className="relative z-10 grid gap-3 md:grid-cols-3">
-          {[0, 1, 2].map((i) => {
+          {Array.from({ length: ALLOCATION_RULES.maxExtraPools }, (_, i) => i).map((i) => {
             const pool = extraPools[i];
             if (!pool) return (
-              <button key={i} type="button" onClick={addPool} disabled={extraPools.length >= 3 || memeStockPct <= 50}
+              <button key={i} type="button" onClick={addPool} disabled={extraPools.length >= ALLOCATION_RULES.maxExtraPools || memeStockPct < ALLOCATION_RULES.mainMinPct + ALLOCATION_RULES.extraPoolMinPct}
                 className="allocation-pool-node group min-h-40 rounded-2xl border border-dashed border-brand/35 bg-white/55 p-4 text-center backdrop-blur-lg transition hover:-translate-y-1 hover:border-brand disabled:cursor-not-allowed disabled:opacity-45">
                 <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-panel text-brand shadow-md"><Plus size={21} weight="bold" /></span>
                 <span className="mt-3 block font-display text-lg font-bold text-ink">Add Stock / USDC pool</span>
@@ -305,10 +322,10 @@ export function LaunchForm() {
                   <button type="button" onClick={() => removePool(i)} aria-label="Remove pool" className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-down/10 hover:text-down">✕</button>
                 </div>
                 <select value={pool.stock} onChange={(e) => setPool(i, { stock: e.target.value })} className="bs-input mt-3 bg-white/65 !py-2 text-sm">
-                  {SUPPORTED_STOCKS.map((s) => <option key={s} value={s}>{s}/USDC</option>)}
+                  {SUPPORTED_STOCKS.map((s) => <option key={s} value={s} disabled={s === stock || extraPools.some((item, index) => index !== i && item.stock === s)}>{s}/USDC</option>)}
                 </select>
                 <div className="mt-3 flex items-center gap-2">
-                  <input type="range" min={10} max={50} value={pool.pct} onChange={(e) => setPool(i, { pct: +e.target.value })} className="min-w-0 flex-1 accent-[color:var(--accent)]" />
+                  <input type="range" min={ALLOCATION_RULES.extraPoolMinPct} max={Math.min(ALLOCATION_RULES.extraPoolMaxPct, ALLOCATION_RULES.totalPct - ALLOCATION_RULES.mainMinPct - (extraTotal - pool.pct))} step={ALLOCATION_RULES.stepPct} value={pool.pct} onChange={(e) => setPool(i, { pct: +e.target.value })} className="min-w-0 flex-1 accent-[color:var(--accent)]" aria-label={`${pool.stock} pool allocation`} />
                   <span className="tnum w-11 text-right text-sm font-bold text-brand">{pool.pct}%</span>
                 </div>
               </article>
@@ -316,6 +333,7 @@ export function LaunchForm() {
           })}
         </div>
 
+        <div className="fee-flow-branch" aria-hidden><i /><i /><i /></div>
         <div className="flow-stem flow-stem-gold" aria-hidden />
         <div className="flow-pill flow-pill-gold mx-auto">FEE FLOW</div>
         <div className="flow-stem flow-stem-gold" aria-hidden />

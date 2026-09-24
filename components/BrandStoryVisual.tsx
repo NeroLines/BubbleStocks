@@ -40,7 +40,7 @@ export function BrandStoryVisual({ variant }: { variant: Story }) {
           <path d="M210 103 C210 116 326 108 326 129" />
         </svg>
         <div className="story-main-pair">
-          <span>MAIN PAIR</span><strong>MEME / STOCK</strong><small>50% minimum locked</small>
+          <span>MAIN PAIR</span><strong>MEME / STOCK</strong><small>min. 50% liquidity in the main pair</small>
         </div>
         {[
           ["TSLA", "story-destination-a"],
