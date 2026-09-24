@@ -11,7 +11,7 @@ export function Logo({ size = 38, withWord = true, dark = false }: { size?: numb
         className="select-none rounded-full shadow-[0_2px_10px_rgba(80,140,255,0.4)]"
         style={{ height: size, width: size }}
       />
-      {withWord && <span className="font-display text-[1.2rem] font-bold tracking-tight text-ink">BubbleStocks</span>}
+      {withWord && <span className="hidden font-display text-[1.2rem] font-bold tracking-tight text-ink min-[480px]:inline">BubbleStocks</span>}
     </span>
   );
 }

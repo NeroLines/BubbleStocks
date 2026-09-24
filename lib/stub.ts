@@ -8,16 +8,37 @@
 // shared STOCK/USDC pool, 70% stays in the meme/stock pool it routes through.
 export const SPLIT = { meme: 70, stock: 30 } as const;
 
+export type Provider = "teslax" | "prestock" | "Tessera";
+
+export type Pairing = {
+  stock: string;
+  provider: Provider;
+  poolAddress: string;
+  lpUsd: number;
+  lpSharePct: number;
+};
+
 export type Memestock = {
   id: string;
   ticker: string;    // meme ticker, e.g. TSCATLA
   name: string;      // display name
   stock: string;     // real underlying, e.g. TSLA
   emoji: string;     // stand-in avatar until real art lands
+  imageUrl?: string; // creator artwork from permanent metadata storage
+  metadataUri?: string; // IPFS/Arweave/HTTPS metadata document
+  address: string;   // mint address (example data in the stub)
+  launchedAt: Date;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  description: string;
   priceUsd: number;
   change24h: number; // percent, can be negative
   mcapUsd: number;
-  liquidityUsd: number; // this meme's liquidity in its meme/stock pool
+  liquidityUsd: number; // total across meme + compounding liquidity
+  memeLiquidityUsd: number;
+  compoundingLiquidityUsd: number;
+  pairings: Pairing[];
   apy: number;          // dividend APY from compounded fees
   holders: number;
   vol24hUsd: number;
@@ -32,6 +53,8 @@ export type Memestock = {
 // that tracks this stock LPs into it; each is a satellite bubble around it.
 export type StockPool = {
   stock: string;
+  provider: Provider;
+  poolAddress: string;
   tvlUsd: number;
   apy: number;              // blended dividend APY
   vol24hUsd: number;
@@ -57,10 +80,10 @@ type MemeSeed = [string, string, string, number, number, number, number];
 // Curated to mirror the Bubble Market reference: hero TSLA pool in the middle,
 // major pools around it, minor pools filling the edges. cx/cy are % on the canvas.
 const POOL_SEEDS: {
-  stock: string; tvlUsd: number; cx: number; cy: number; tier: 0 | 1 | 2; memes: MemeSeed[];
+  stock: string; provider: Provider; tvlUsd: number; cx: number; cy: number; tier: 0 | 1 | 2; memes: MemeSeed[];
 }[] = [
   {
-    stock: "TSLA", tvlUsd: 4_820_000, cx: 50, cy: 45, tier: 0,
+    stock: "TSLA", provider: "teslax", tvlUsd: 4_820_000, cx: 50, cy: 45, tier: 0,
     memes: [
       ["TSCATLA", "Tesla Cat",  "🐱", 842, -12.4, 42.8, 3482],
       ["TSLAMEME", "Tesla Bull", "🐂", 126,  6.1, 26.4, 910],
@@ -68,7 +91,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "NVDA", tvlUsd: 3_210_000, cx: 23, cy: 28, tier: 1,
+    stock: "NVDA", provider: "prestock", tvlUsd: 3_210_000, cx: 23, cy: 28, tier: 1,
     memes: [
       ["NVCATDA", "Nvidia Cat",  "🐱", 621,  8.7, 31.2, 2812],
       ["NVDAFROG", "Nvidia Frog", "🐸", 284, 21.3, 28.0, 1140],
@@ -76,7 +99,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "GOOGL", tvlUsd: 2_760_000, cx: 77, cy: 28, tier: 1,
+    stock: "GOOGL", provider: "Tessera", tvlUsd: 2_760_000, cx: 77, cy: 28, tier: 1,
     memes: [
       ["GOOCAT",   "Google Cat",  "🐱", 412,  3.2, 31.7, 2110],
       ["GOOGFROG", "Google Frog", "🐸", 208,  4.4, 27.1, 980],
@@ -84,7 +107,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "AAPL", tvlUsd: 2_140_000, cx: 20, cy: 68, tier: 1,
+    stock: "AAPL", provider: "prestock", tvlUsd: 2_140_000, cx: 20, cy: 68, tier: 1,
     memes: [
       ["AACATPL",  "Apple Cat",   "🐱", 318, -2.1, 26.9, 1620],
       ["APPLEFROG","Apple Frog",  "🐸", 156,  4.8, 23.4, 720],
@@ -92,7 +115,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "AMZN", tvlUsd: 1_930_000, cx: 45, cy: 74, tier: 1,
+    stock: "AMZN", provider: "teslax", tvlUsd: 1_930_000, cx: 45, cy: 74, tier: 1,
     memes: [
       ["AMCATZN", "Amazon Cat",  "🐱", 274,  4.8, 28.9, 1690],
       ["AMZDOG",  "Amazon Dog",  "🐶", 161, 11.9, 25.2, 810],
@@ -100,7 +123,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "COIN", tvlUsd: 1_560_000, cx: 70, cy: 68, tier: 2,
+    stock: "COIN", provider: "Tessera", tvlUsd: 1_560_000, cx: 70, cy: 68, tier: 2,
     memes: [
       ["COCATIN",  "Coinbase Cat",  "🐱", 231, 15.6, 24.6, 1410],
       ["COINFROG", "Coinbase Frog", "🐸", 142,  6.3, 21.0, 690],
@@ -108,7 +131,7 @@ const POOL_SEEDS: {
     ],
   },
   {
-    stock: "HOOD", tvlUsd: 1_390_000, cx: 82, cy: 50, tier: 2,
+    stock: "HOOD", provider: "prestock", tvlUsd: 1_390_000, cx: 82, cy: 50, tier: 2,
     memes: [
       ["HOCATOD",  "Hood Cat",  "🐱", 231, 11.9, 23.7, 1300],
       ["HOODFROG", "Hood Frog", "🐸", 121,  5.4, 20.4, 620],
@@ -117,24 +140,67 @@ const POOL_SEEDS: {
   },
 ];
 
-let _cache: StockPool[] | null = null;
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const fakePubkey = (seed: number) => Array.from({ length: 44 }, (_, i) => BASE58[(seed * 17 + i * 11) % BASE58.length]).join("");
 
-function build(): StockPool[] {
+const EXTRA_PAIRINGS: Record<string, number[]> = {
+  TSCATLA: [1, 2],
+  NVCATDA: [0, 5],
+  GOOCAT: [0],
+  AACATPL: [1],
+  AMCATZN: [2, 5],
+  COCATIN: [0, 6],
+  HOCATOD: [4],
+};
+
+let _cache: { pools: StockPool[]; memes: Memestock[] } | null = null;
+
+function build() {
   if (_cache) return _cache;
+  const pools: StockPool[] = POOL_SEEDS.map((p, i) => ({
+    stock: p.stock,
+    provider: p.provider,
+    poolAddress: fakePubkey(100 + i),
+    tvlUsd: p.tvlUsd,
+    apy: 0,
+    vol24hUsd: 0,
+    fees24hUsd: 0,
+    contributors: [],
+    cx: p.cx,
+    cy: p.cy,
+    tier: p.tier,
+  }));
   let uid = 0;
-  _cache = POOL_SEEDS.map((p) => {
-    const contributors: Memestock[] = p.memes.map(([ticker, name, emoji, liqK, chg, apy, holders], i) => {
-      const liquidityUsd = liqK * 1000;
-      const vol24hUsd = Math.round(liquidityUsd * (1.2 + ((i * 7) % 10) / 10));
+  const memes: Memestock[] = POOL_SEEDS.flatMap((p, poolIndex) =>
+    p.memes.map(([ticker, name, emoji, liqK, chg, apy, holders], i) => {
+      const memeLiquidityUsd = liqK * 1000;
+      const primaryLpUsd = Math.round(memeLiquidityUsd * (0.22 + (i * 0.035)));
+      const vol24hUsd = Math.round(memeLiquidityUsd * (1.2 + ((i * 7) % 10) / 10));
       const price = +(0.004 + (uid % 9) * 0.006 + Math.abs(chg) * 0.0004).toFixed(4);
       uid++;
       return {
         id: String(uid),
         ticker, name, stock: p.stock, emoji,
+        address: fakePubkey(uid),
+        launchedAt: new Date(Date.UTC(2026, 8, Math.max(1, 24 - uid), 9 + (uid % 8), (uid * 7) % 60)),
+        website: `https://example.com/bubblestocks/${ticker.toLowerCase()}`,
+        twitter: `https://x.com/${ticker.toLowerCase()}`,
+        telegram: `https://t.me/${ticker.toLowerCase()}`,
+        description: `${name} is a community-launched BubbleStock routing trading fees into ${p.stock}/USDC liquidity and holder rewards.`,
         priceUsd: price,
         change24h: chg,
-        mcapUsd: liquidityUsd * 10,
-        liquidityUsd, apy, holders,
+        mcapUsd: memeLiquidityUsd * 10,
+        liquidityUsd: memeLiquidityUsd + primaryLpUsd,
+        memeLiquidityUsd,
+        compoundingLiquidityUsd: primaryLpUsd,
+        pairings: [{
+          stock: p.stock,
+          provider: pools[poolIndex].provider,
+          poolAddress: pools[poolIndex].poolAddress,
+          lpUsd: primaryLpUsd,
+          lpSharePct: +(primaryLpUsd / pools[poolIndex].tvlUsd * 100).toFixed(2),
+        }],
+        apy, holders,
         vol24hUsd,
         fees24hUsd: Math.round(vol24hUsd * 0.003),
         // Reward payout airdropped to this meme's holders in the last 24h.
@@ -143,30 +209,55 @@ function build(): StockPool[] {
         migrated: true,
         spark: spark(uid + 3, chg >= 0),
       };
+    })
+  );
+
+  for (const meme of memes) {
+    const targets = EXTRA_PAIRINGS[meme.ticker] ?? [];
+    targets.forEach((poolIndex, i) => {
+      const target = pools[poolIndex];
+      const lpUsd = Math.round(meme.memeLiquidityUsd * (0.075 + i * 0.025));
+      meme.pairings.push({
+        stock: target.stock,
+        provider: target.provider,
+        poolAddress: target.poolAddress,
+        lpUsd,
+        lpSharePct: +(lpUsd / target.tvlUsd * 100).toFixed(2),
+      });
     });
-    const vol24 = contributors.reduce((s, m) => s + m.vol24hUsd, 0);
-    return {
-      stock: p.stock, tvlUsd: p.tvlUsd,
-      apy: +(contributors.reduce((s, m) => s + m.apy, 0) / contributors.length).toFixed(1),
-      vol24hUsd: vol24,
-      fees24hUsd: contributors.reduce((s, m) => s + m.fees24hUsd, 0),
-      contributors: contributors.sort((a, b) => b.liquidityUsd - a.liquidityUsd),
-      cx: p.cx, cy: p.cy, tier: p.tier,
-    };
-  });
+    meme.compoundingLiquidityUsd = meme.pairings.reduce((sum, pairing) => sum + pairing.lpUsd, 0);
+    meme.liquidityUsd = meme.memeLiquidityUsd + meme.compoundingLiquidityUsd;
+  }
+
+  for (const pool of pools) {
+    pool.contributors = memes
+      .filter((m) => m.pairings.some((pairing) => pairing.poolAddress === pool.poolAddress))
+      .sort((a, b) => {
+        const aLp = a.pairings.find((pairing) => pairing.poolAddress === pool.poolAddress)?.lpUsd ?? 0;
+        const bLp = b.pairings.find((pairing) => pairing.poolAddress === pool.poolAddress)?.lpUsd ?? 0;
+        return bLp - aLp;
+      });
+    pool.vol24hUsd = pool.contributors.reduce((sum, m) => sum + m.vol24hUsd, 0);
+    pool.fees24hUsd = pool.contributors.reduce((sum, m) => sum + m.fees24hUsd, 0);
+    pool.apy = +(pool.contributors.reduce((sum, m) => sum + m.apy, 0) / Math.max(1, pool.contributors.length)).toFixed(1);
+  }
+
+  _cache = { pools, memes };
   return _cache;
 }
 
 export async function getPools(): Promise<StockPool[]> {
-  return build();
+  return build().pools;
 }
 
 export async function getPool(stock: string): Promise<StockPool | undefined> {
-  return build().find((p) => p.stock.toLowerCase() === stock.toLowerCase());
+  return build().pools
+    .filter((p) => p.stock.toLowerCase() === stock.toLowerCase())
+    .sort((a, b) => b.tvlUsd - a.tvlUsd)[0];
 }
 
 export async function getMemestocks(): Promise<Memestock[]> {
-  return build().flatMap((p) => p.contributors);
+  return build().memes;
 }
 
 export async function getMemestock(id: string): Promise<Memestock | undefined> {
@@ -180,8 +271,7 @@ export async function topMemes(n = 5): Promise<Memestock[]> {
 
 // Protocol-wide headline numbers.
 export async function getStats() {
-  const pools = build();
-  const memes = pools.flatMap((p) => p.contributors);
+  const { pools, memes } = build();
   return {
     totalLiquidityUsd: 48_700_000,
     volume24hUsd: 12_300_000,
@@ -201,7 +291,9 @@ export type LaunchInput = {
   ticker: string;
   stock: string;
   quoteToken: string;      // USDC | SOL
-  imageUrl?: string;
+  // Portable source for the connector to upload to permanent metadata storage.
+  // Never pass a blob: URL here: it stops working when the browser tab closes.
+  imageDataUrl?: string;
   description?: string;
   devBuySol?: number;      // optional creator's first buy
   website?: string;
@@ -211,11 +303,19 @@ export type LaunchInput = {
   // across up to 3 STOCK/USDC fee-recipient pools. Percentages sum to 100.
   allocation: { memeStockPct: number; pools: { stock: string; pct: number }[] };
 };
-export async function launchMemestock(input: LaunchInput): Promise<{ id: string; signature: string }> {
+export type LaunchResult = {
+  id: string;
+  signature: string;
+  imageUrl?: string;
+  metadataUri?: string;
+};
+export async function launchMemestock(input: LaunchInput): Promise<LaunchResult> {
   await new Promise((r) => setTimeout(r, 1200)); // feel of a real tx
   return {
     id: input.ticker.toLowerCase(),
     signature: "stub" + Math.random().toString(36).slice(2, 12),
+    // The real connector replaces this with the uploaded permanent asset URL.
+    imageUrl: input.imageDataUrl,
   };
 }
 

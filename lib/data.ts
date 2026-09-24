@@ -19,4 +19,4 @@ export const swap = src.swap;
 
 // Constants + types live in stub (they are shape, not data source).
 export { SPLIT, SUPPORTED_STOCKS } from "./stub";
-export type { Memestock, StockPool, LaunchInput, SwapInput } from "./stub";
+export type { Memestock, Pairing, Provider, StockPool, LaunchInput, LaunchResult, SwapInput } from "./stub";

@@ -9,25 +9,26 @@ export function Donut({
 }) {
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
-  let offset = 0;
+  const rings = segments.map((segment, index) => {
+    const len = (segment.pct / 100) * c;
+    const visible = Math.max(0, len - gap);
+    const offset = segments
+      .slice(0, index)
+      .reduce((sum, previous) => sum + (previous.pct / 100) * c, 0);
+    return { ...segment, dash: `${visible} ${c - visible}`, offset };
+  });
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(255 255 255 / 0.35)" strokeWidth={thickness} />
-        {segments.map((s, i) => {
-          const len = (s.pct / 100) * c;
-          const dash = `${Math.max(0, len - gap)} ${c - Math.max(0, len - gap)}`;
-          const el = (
-            <circle
-              key={i}
-              cx={size / 2} cy={size / 2} r={r}
-              fill="none" stroke={s.color} strokeWidth={thickness}
-              strokeDasharray={dash} strokeDashoffset={-offset} strokeLinecap="round"
-            />
-          );
-          offset += len;
-          return el;
-        })}
+        {rings.map((segment, index) => (
+          <circle
+            key={index}
+            cx={size / 2} cy={size / 2} r={r}
+            fill="none" stroke={segment.color} strokeWidth={thickness}
+            strokeDasharray={segment.dash} strokeDashoffset={-segment.offset} strokeLinecap="round"
+          />
+        ))}
       </svg>
       {children && <div className="absolute inset-0 grid place-items-center text-center">{children}</div>}
     </div>

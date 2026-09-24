@@ -1,5 +1,7 @@
 import { Nav } from "@/components/Nav";
 import { ExploreGrid } from "@/components/ExploreGrid";
+import { BrandPageHeader } from "@/components/BrandPageHeader";
+import { BrandStoryVisual } from "@/components/BrandStoryVisual";
 import { getMemestocks } from "@/lib/data";
 
 export default async function ExplorePage() {
@@ -8,8 +10,13 @@ export default async function ExplorePage() {
     <main className="min-h-[100dvh] bg-bg">
       <Nav />
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink md:text-4xl">Explore memestocks</h1>
-        <p className="mt-2 text-ink-soft">Every meme live on the curve or migrated to DAMM v2. Search, filter and sort to find your play.</p>
+        <BrandPageHeader
+          eyebrow="Live market directory"
+          title="Find the bubbles moving liquidity."
+          description="Every BubbleStock live on the curve or migrated to DAMM v2. Search by meme or stock, then follow where its liquidity compounds."
+        >
+          <BrandStoryVisual variant="explore" />
+        </BrandPageHeader>
         <ExploreGrid items={stocks} />
       </div>
     </main>

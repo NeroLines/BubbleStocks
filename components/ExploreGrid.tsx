@@ -4,8 +4,9 @@ import { MemestockCard } from "./MemestockCard";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import type { Memestock } from "@/lib/data";
 
-type Sort = "liquidity" | "volume" | "apy" | "change";
+type Sort = "launched" | "liquidity" | "volume" | "apy" | "change";
 const SORTS: { key: Sort; label: string }[] = [
+  { key: "launched", label: "Last launched" },
   { key: "liquidity", label: "Liquidity" },
   { key: "volume", label: "24h volume" },
   { key: "apy", label: "APY" },
@@ -17,7 +18,7 @@ const FILTERS = ["All", "Migrated", "On curve"] as const;
 // things every listing needs: search, filter, sort. Client-side over the full set.
 export function ExploreGrid({ items }: { items: Memestock[] }) {
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<Sort>("liquidity");
+  const [sort, setSort] = useState<Sort>("launched");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
 
   const shown = useMemo(() => {
@@ -27,6 +28,7 @@ export function ExploreGrid({ items }: { items: Memestock[] }) {
     );
     if (filter === "Migrated") list = list.filter((m) => m.migrated);
     if (filter === "On curve") list = list.filter((m) => !m.migrated);
+    if (sort === "launched") return [...list].sort((a, b) => new Date(b.launchedAt).getTime() - new Date(a.launchedAt).getTime());
     const key = { liquidity: "liquidityUsd", volume: "vol24hUsd", apy: "apy", change: "change24h" }[sort] as keyof Memestock;
     return [...list].sort((a, b) => (b[key] as number) - (a[key] as number));
   }, [items, q, sort, filter]);
@@ -55,7 +57,7 @@ export function ExploreGrid({ items }: { items: Memestock[] }) {
 
       {shown.length === 0 ? (
         <div className="card mt-6 rounded-2xl p-10 text-center text-ink-soft">
-          No memestocks match “{q}”. Try another ticker or clear the filters.
+          No BubbleStocks match “{q}”. Try another ticker or clear the filters.
         </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

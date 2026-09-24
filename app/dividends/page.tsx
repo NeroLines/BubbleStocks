@@ -1,4 +1,6 @@
 import { Nav } from "@/components/Nav";
+import { BrandPageHeader } from "@/components/BrandPageHeader";
+import { BrandStoryVisual } from "@/components/BrandStoryVisual";
 import { getStats, getPools } from "@/lib/data";
 import { compact } from "@/lib/format";
 import { Coins, ArrowsClockwise, Clock, Gift, Wallet, ArrowRight, Fire } from "@phosphor-icons/react/dist/ssr";
@@ -10,21 +12,17 @@ export default async function RewardsPage() {
   return (
     <main className="min-h-[100dvh] bg-bg">
       <Nav />
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-3 py-1 text-xs font-semibold text-ink-soft">
-          <Gift size={14} weight="fill" className="text-brand" /> Rewards
-        </span>
-        <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink md:text-4xl">
-          How holders earn
-        </h1>
-        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-ink-soft">
-          Two streams flow back to the people who hold: the pool&apos;s trading fees, and a
-          reward vault of <span className="font-semibold text-ink">30% of every launch&apos;s supply</span>{" "}
-          that pays out by how long you hold.
-        </p>
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <BrandPageHeader
+          eyebrow="Holder rewards"
+          title="Fees flow back into the bubble."
+          description="Pool fees compound into deeper STOCK/USDC liquidity, then flow to holders alongside the 30% time-weighted reward vault."
+        >
+          <BrandStoryVisual variant="rewards" />
+        </BrandPageHeader>
 
         {/* top stats */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="relative z-10 -mt-4 grid gap-4 px-3 sm:grid-cols-3 sm:px-6">
           <Tile icon={<Coins size={22} weight="fill" />} value={compact(stats.feesDistributedUsd)} label="Fees distributed to holders" />
           <Tile icon={<ArrowsClockwise size={22} weight="fill" />} value={compact(poolFees24h)} label="24h fees compounding" />
           <Tile icon={<Gift size={22} weight="fill" />} value="30%" label="Of supply reserved as rewards" />
@@ -36,7 +34,7 @@ export default async function RewardsPage() {
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand"><ArrowsClockwise size={22} weight="fill" /></span>
             <div className="mt-4 font-display text-lg font-bold text-ink">Compounding fee airdrops</div>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              A memestock&apos;s trading fees compound into the shared STOCK/USDC pool. The pool
+              A BubbleStock&apos;s trading fees compound into shared STOCK/USDC pools. The pools
               grows, and its fees are airdropped to holders — the deeper the pool gets, the
               bigger the payouts.
             </p>

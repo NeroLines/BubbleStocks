@@ -9,8 +9,8 @@ import type { StockPool } from "@/lib/data";
 
 // Bubble Market: d3-force computes a clean, non-overlapping packed layout (no
 // hand-placed positions), rendered as CSS soap bubbles (crisp at any size) over
-// a sky gradient. Meme coins orbit each pool; fee-flow lines stream to the
-// deepest pool. Deterministic sim (fixed init) → no hydration drift, no WebGL.
+// a sky gradient. BubbleStocks orbit and feed their own destination pool.
+// Deterministic sim (fixed init) → no hydration drift, no WebGL.
 const W = 1000, H = 640;
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -43,24 +43,17 @@ function layout(pools: StockPool[]): Node[] {
 export function BubbleMarket({ pools }: { pools: StockPool[] }) {
   const [hover, setHover] = useState<StockPool | null>(null);
   const nodes = useMemo(() => layout(pools), [pools]);
-  const hero = nodes.find((n) => n.hero)!;
-
   return (
-    <div className="relative w-full" style={{ aspectRatio: `${W} / ${H}` }}>
+    <div className="market-stage relative w-full" style={{ aspectRatio: `${W} / ${H}` }}>
       {/* drifting brand bubbles as the map's own background (no solid panel) */}
-      <FloatingBubbles className="opacity-90" />
-      <div className="pointer-events-none absolute left-4 top-3 z-20 flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#1a56c4" }} />
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#1a4a9e" }}>Liquidity map</span>
+      <FloatingBubbles className="opacity-40" />
+      <div className="pointer-events-none absolute left-5 top-4 z-20 flex items-center gap-2.5">
+        <span className="relative flex h-2 w-2">
+          <span className="market-live-pulse absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-2 opacity-40" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-2" />
+        </span>
+        <span className="market-kicker text-[11px] font-bold uppercase tracking-[0.16em]">Live liquidity map</span>
       </div>
-
-      {/* fee-flow lines toward the deepest pool */}
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-        {nodes.filter((n) => !n.hero).map((n) => (
-          <line key={n.p.stock} x1={r2(n.x)} y1={r2(n.y)} x2={r2(hero.x)} y2={r2(hero.y)}
-            className="flow-line" stroke="rgba(255,255,255,0.7)" strokeWidth={2} strokeLinecap="round" />
-        ))}
-      </svg>
 
       {nodes.map((n, i) => {
         const d = (n.r * 2 / W) * 100;      // diameter, % of width
@@ -69,23 +62,30 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
         const orbitDur = 20 + (i % 4) * 5;
         return (
           <Link
-            key={n.p.stock}
+            key={n.p.poolAddress}
             href={`/pools/${n.p.stock}`}
             onMouseEnter={() => setHover(n.p)}
             onMouseLeave={() => setHover(null)}
-            className="bubble-float absolute -translate-x-1/2 -translate-y-1/2 transition-opacity"
+            className="market-bubble-node absolute -translate-x-1/2 -translate-y-1/2 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
             style={{
               left: `${r2((n.x / W) * 100)}%`, top: `${r2((n.y / H) * 100)}%`,
               width: `${r2(d)}%`, aspectRatio: "1",
-              animationDuration: `${5 + (i % 3)}s`, animationDelay: `${-i * 0.6}s`,
               opacity: dim ? 0.5 : 1, zIndex: n.hero ? 10 : 5,
             }}
           >
+            <span className="bubble-float absolute inset-0" style={{ animationDuration: `${5 + (i % 3)}s`, animationDelay: `${-i * 0.6}s` }}>
             <span className="css-bubble absolute inset-0" />
+            {n.hero && <span className="pool-split-ring" aria-hidden />}
 
             {/* orbiting meme coins */}
-            <span className="orbit-ring pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-              style={{ width: "148%", height: "148%", animationDuration: `${orbitDur}s` }}>
+            <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ width: "148%", height: "148%" }}>
+            <span className="orbit-ring absolute inset-0" style={{ animationDuration: `${orbitDur}s` }}>
+              <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+                {coins.map((m, j) => {
+                  const a = (j / coins.length) * Math.PI * 2 - Math.PI / 2;
+                  return <line key={m.id} x1={50 + Math.cos(a) * 50} y1={50 + Math.sin(a) * 50} x2="50" y2="50" className="flow-line market-flow" strokeWidth="0.75" strokeLinecap="round" />;
+                })}
+              </svg>
               {coins.map((m, j) => {
                 const a = (j / coins.length) * Math.PI * 2 - Math.PI / 2;
                 return (
@@ -97,10 +97,10 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
                 );
               })}
             </span>
+            </span>
 
             {/* label */}
-            <span className="pointer-events-none absolute inset-0 z-10 grid place-items-center text-center leading-tight"
-              style={{ color: "#0a2a5e", textShadow: "0 1px 2px rgba(255,255,255,0.9), 0 0 10px rgba(255,255,255,0.85)" }}>
+            <span className="market-label pointer-events-none absolute inset-0 z-10 grid place-items-center text-center leading-tight">
               <span>
                 <span className="block font-display font-bold" style={{ fontSize: n.hero ? "0.92rem" : "0.72rem" }}>
                   {n.p.stock}<span className="opacity-70">/USDC</span>
@@ -108,8 +108,9 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
                 <span className="tnum block font-display font-extrabold" style={{ fontSize: n.hero ? "1.55rem" : "1.05rem" }}>
                   {compact(n.p.tvlUsd)}
                 </span>
-                <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#1a56c4" }}>{n.p.apy}% APY</span>
+                <span className="market-kicker block text-[10px] font-bold uppercase tracking-wider">{n.p.apy}% APY</span>
               </span>
+            </span>
             </span>
           </Link>
         );
@@ -118,7 +119,7 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
       {/* detail card */}
       <div className={`pointer-events-none absolute right-3 top-3 z-20 w-60 transition-opacity duration-150 ${hover ? "opacity-100" : "opacity-0"}`}>
         {hover && (
-          <div className="card rounded-2xl p-4">
+          <div className="market-detail card rounded-2xl p-4 shadow-[var(--shadow-lg)]">
             <div className="flex items-baseline justify-between">
               <span className="font-display text-base font-bold text-ink">{hover.stock}<span className="text-ink-soft">/USDC</span></span>
               <span className="tnum rounded-full bg-up/10 px-2 py-0.5 text-sm font-bold text-up">{hover.apy}% APY</span>
@@ -136,7 +137,9 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
                 <li key={m.id} className="flex items-center gap-2">
                   <CoinImage m={m} size={22} />
                   <span className="font-mono text-xs font-bold text-ink">${m.ticker}</span>
-                  <span className="tnum ml-auto text-xs font-semibold text-ink-soft">{compact(m.liquidityUsd)}</span>
+                  <span className="tnum ml-auto text-xs font-semibold text-ink-soft">
+                    {compact(m.pairings.find((pairing) => pairing.poolAddress === hover.poolAddress)?.lpUsd ?? 0)} LP
+                  </span>
                 </li>
               ))}
             </ul>
@@ -144,9 +147,8 @@ export function BubbleMarket({ pools }: { pools: StockPool[] }) {
         )}
       </div>
 
-      <div className={`pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-medium transition-opacity ${hover ? "opacity-0" : "opacity-100"}`}
-        style={{ color: "#2a5aa8" }}>
-        Hover a bubble to see its memes
+      <div className={`market-hint market-kicker pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-semibold shadow-sm backdrop-blur-md transition-opacity ${hover ? "opacity-0" : "opacity-100"}`}>
+        Hover to inspect a pool
       </div>
     </div>
   );

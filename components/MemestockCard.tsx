@@ -39,7 +39,7 @@ export function MemestockCard({ m }: { m: Memestock }) {
       >
         <Link
           href={`/token/${m.id}`}
-          className="group glass relative block overflow-hidden rounded-2xl p-4 transition-shadow duration-200 hover:shadow-[0_20px_60px_rgb(12_35_64_/_0.18)]"
+          className="brand-market-card group glass relative block overflow-hidden rounded-2xl p-4 transition-shadow duration-200 hover:shadow-[0_20px_60px_rgb(12_35_64_/_0.18)]"
         >
           {/* cursor spotlight */}
           <motion.span
@@ -58,7 +58,7 @@ export function MemestockCard({ m }: { m: Memestock }) {
               <div className="min-w-0">
                 <div className="font-mono text-sm font-bold text-ink">${m.ticker}</div>
                 <div className="truncate text-xs text-ink-soft">
-                  {m.name} · tracks {m.stock}
+                  {m.name} · {m.stock}
                 </div>
               </div>
             </div>
@@ -79,7 +79,7 @@ export function MemestockCard({ m }: { m: Memestock }) {
           <div className="mt-3 flex items-end justify-between">
             <div>
               <div className="font-mono text-lg font-bold text-ink">{usd(m.priceUsd)}</div>
-              <div className="text-[11px] text-ink-soft">MCap {compact(m.mcapUsd)}</div>
+              <div className="text-[11px] text-ink-soft">MCap {compact(m.mcapUsd)} · {new Date(m.launchedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
             </div>
             {m.migrated ? (
               <span className="rounded-full bg-brand/10 px-2 py-1 text-[11px] font-semibold text-brand">

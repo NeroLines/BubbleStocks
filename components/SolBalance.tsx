@@ -9,19 +9,21 @@ import { CurrencyDollar } from "@phosphor-icons/react";
 export function SolBalance() {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
-  const [sol, setSol] = useState<number | null>(null);
+  const [balance, setBalance] = useState<{ owner: string; sol: number } | null>(null);
 
   useEffect(() => {
-    if (!publicKey) { setSol(null); return; }
+    if (!publicKey) return;
     let alive = true;
+    const owner = publicKey.toBase58();
     const load = () => connection.getBalance(publicKey)
-      .then((l) => alive && setSol(l / LAMPORTS_PER_SOL))
-      .catch(() => alive && setSol(null));
+      .then((lamports) => { if (alive) setBalance({ owner, sol: lamports / LAMPORTS_PER_SOL }); })
+      .catch(() => { if (alive) setBalance(null); });
     load();
     const id = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(id); };
   }, [publicKey, connection]);
 
+  const sol = publicKey && balance?.owner === publicKey.toBase58() ? balance.sol : null;
   if (sol === null) return null;
   return (
     <span className="hidden items-center gap-1.5 rounded-full border border-border bg-panel px-3 py-1.5 text-sm font-semibold text-ink sm:inline-flex">
