@@ -19,14 +19,14 @@ export type LaunchAllocation = {
   pools: { stock: string; pct: number }[];
 };
 
-export function isLaunchAllocationValid(allocation: LaunchAllocation, mainStock?: string): boolean {
+export function isLaunchAllocationValid(allocation: LaunchAllocation): boolean {
   const { memeStockPct, pools } = allocation;
   if (!Number.isFinite(memeStockPct)
     || memeStockPct < ALLOCATION_RULES.mainMinPct
     || memeStockPct > ALLOCATION_RULES.totalPct
     || pools.length > ALLOCATION_RULES.maxExtraPools) return false;
 
-  const destinations = new Set(mainStock ? [mainStock] : []);
+  const destinations = new Set<string>();
   let total = memeStockPct;
   for (const pool of pools) {
     if (!pool.stock
@@ -342,7 +342,7 @@ export type LaunchResult = {
   metadataUri?: string;
 };
 export async function launchMemestock(input: LaunchInput): Promise<LaunchResult> {
-  if (!isLaunchAllocationValid(input.allocation, input.stock)) {
+  if (!isLaunchAllocationValid(input.allocation)) {
     throw new Error("Invalid allocation: keep at least 50% in the main pair and distribute at most 50% across up to three unique pools.");
   }
   await new Promise((r) => setTimeout(r, 1200)); // feel of a real tx

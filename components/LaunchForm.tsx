@@ -54,13 +54,13 @@ export function LaunchForm() {
   const extraTotal = extraPools.reduce((s, p) => s + p.pct, 0);
   const memeStockPct = ALLOCATION_RULES.totalPct - extraTotal;
   const allocation = { memeStockPct, pools: extraPools };
-  const allocValid = isLaunchAllocationValid(allocation, stock);
+  const allocValid = isLaunchAllocationValid(allocation);
   const valid = name.trim() && ticker.trim().length >= 2 && allocValid;
 
   const addPool = () => {
     const remainingExtraCapacity = ALLOCATION_RULES.totalPct - ALLOCATION_RULES.mainMinPct - extraTotal;
     if (extraPools.length >= ALLOCATION_RULES.maxExtraPools || remainingExtraCapacity < ALLOCATION_RULES.extraPoolMinPct) return;
-    const used = new Set([stock, ...extraPools.map((p) => p.stock)]);
+    const used = new Set(extraPools.map((p) => p.stock));
     const next = SUPPORTED_STOCKS.find((s) => !used.has(s)) ?? SUPPORTED_STOCKS[0];
     setExtraPools([...extraPools, { stock: next, pct: Math.min(25, remainingExtraCapacity) }]);
   };
@@ -74,19 +74,7 @@ export function LaunchForm() {
     });
   };
   const removePool = (i: number) => setExtraPools(extraPools.filter((_, j) => j !== i));
-  const setMainStock = (nextStock: string) => {
-    setStock(nextStock);
-    setExtraPools((pools) => {
-      const used = new Set([nextStock]);
-      return pools.map((pool) => {
-        const poolStock = used.has(pool.stock)
-          ? SUPPORTED_STOCKS.find((candidate) => !used.has(candidate)) ?? pool.stock
-          : pool.stock;
-        used.add(poolStock);
-        return { ...pool, stock: poolStock };
-      });
-    });
-  };
+  const setMainStock = (nextStock: string) => setStock(nextStock);
   const setMainAllocation = (nextMainPct: number) => {
     const safeMainPct = Math.max(ALLOCATION_RULES.mainMinPct, Math.min(nextMainPct, ALLOCATION_RULES.totalPct));
     const targetExtra = ALLOCATION_RULES.totalPct - safeMainPct;
@@ -94,7 +82,7 @@ export function LaunchForm() {
     let count = Math.max(1, extraPools.length);
     while (count > 1 && targetExtra < count * ALLOCATION_RULES.extraPoolMinPct) count--;
     count = Math.min(ALLOCATION_RULES.maxExtraPools, count);
-    const used = new Set([stock]);
+    const used = new Set<string>();
     const nextPools = Array.from({ length: count }, (_, i) => {
       const current = extraPools[i];
       const nextStock = current?.stock ?? SUPPORTED_STOCKS.find((candidate) => !used.has(candidate)) ?? SUPPORTED_STOCKS[0];
@@ -322,7 +310,7 @@ export function LaunchForm() {
                   <button type="button" onClick={() => removePool(i)} aria-label="Remove pool" className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-down/10 hover:text-down">✕</button>
                 </div>
                 <select value={pool.stock} onChange={(e) => setPool(i, { stock: e.target.value })} className="bs-input mt-3 bg-white/65 !py-2 text-sm">
-                  {SUPPORTED_STOCKS.map((s) => <option key={s} value={s} disabled={s === stock || extraPools.some((item, index) => index !== i && item.stock === s)}>{s}/USDC</option>)}
+                  {SUPPORTED_STOCKS.map((s) => <option key={s} value={s} disabled={extraPools.some((item, index) => index !== i && item.stock === s)}>{s}/USDC</option>)}
                 </select>
                 <div className="mt-3 flex items-center gap-2">
                   <input type="range" min={ALLOCATION_RULES.extraPoolMinPct} max={Math.min(ALLOCATION_RULES.extraPoolMaxPct, ALLOCATION_RULES.totalPct - ALLOCATION_RULES.mainMinPct - (extraTotal - pool.pct))} step={ALLOCATION_RULES.stepPct} value={pool.pct} onChange={(e) => setPool(i, { pct: +e.target.value })} className="min-w-0 flex-1 accent-[color:var(--accent)]" aria-label={`${pool.stock} pool allocation`} />
